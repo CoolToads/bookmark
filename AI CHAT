@@ -1,0 +1,110 @@
+javascript:(function() {
+  const storageKey = 'aiChatHistory';
+  const personas = [
+    { name: 'Jerry', avatar: 'https://img.freepik.com/free-photo/young-bearded-man-with-striped-shirt_273609-5677.jpg?semt=ais_hybrid&w=740' },
+    { name: 'Bob', avatar: 'https://thumbs.dreamstime.com/b/portrait-man-beard-view-one-handsome-senior-stylish-black-hair-long-lush-blue-shirt-standing-outdoor-white-wall-61089769.jpg?w=768' }
+  ];
+
+  let chatHistory = JSON.parse(localStorage.getItem(storageKey)) || [];
+
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.bottom = '10px';
+  container.style.right = '10px';
+  container.style.width = '300px';
+  container.style.height = '400px';
+  container.style.backgroundColor = '#fff';
+  container.style.border = '1px solid #ccc';
+  container.style.boxShadow = '0 0 10px rgba(0,0,0,0.1)';
+  container.style.zIndex = '10000';
+  container.style.padding = '10px';
+  container.style.overflow = 'hidden';
+
+  const chatBox = document.createElement('div');
+  chatBox.style.height = '300px';
+  chatBox.style.overflowY = 'auto';
+  chatBox.style.marginBottom = '10px';
+  container.appendChild(chatBox);
+
+  const inputBox = document.createElement('input');
+  inputBox.type = 'text';
+  inputBox.placeholder = 'Type your message...';
+  inputBox.style.width = '100%';
+  inputBox.style.padding = '5px';
+  container.appendChild(inputBox);
+
+  const sendButton = document.createElement('button');
+  sendButton.textContent = 'Send';
+  sendButton.style.width = '100%';
+  sendButton.style.padding = '5px';
+  container.appendChild(sendButton);
+
+  const endButton = document.createElement('button');
+  endButton.textContent = 'End Chat';
+  endButton.style.width = '100%';
+  endButton.style.padding = '5px';
+  container.appendChild(endButton);
+
+  const exportButton = document.createElement('button');
+  exportButton.textContent = 'Export Chat';
+  exportButton.style.width = '100%';
+  exportButton.style.padding = '5px';
+  container.appendChild(exportButton);
+
+  document.body.appendChild(container);
+
+  function renderChat() {
+    chatBox.innerHTML = '';
+    chatHistory.forEach(entry => {
+      const messageDiv = document.createElement('div');
+      messageDiv.style.display = 'flex';
+      messageDiv.style.marginBottom = '5px';
+
+      const avatar = document.createElement('img');
+      avatar.src = entry.avatar;
+      avatar.style.width = '30px';
+      avatar.style.height = '30px';
+      avatar.style.borderRadius = '50%';
+      avatar.style.marginRight = '10px';
+
+      const messageText = document.createElement('div');
+      messageText.textContent = entry.message;
+      messageText.style.backgroundColor = '#f1f1f1';
+      messageText.style.padding = '5px';
+      messageText.style.borderRadius = '5px';
+
+      messageDiv.appendChild(avatar);
+      messageDiv.appendChild(messageText);
+      chatBox.appendChild(messageDiv);
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function saveChat() {
+    localStorage.setItem(storageKey, JSON.stringify(chatHistory));
+  }
+
+  sendButton.addEventListener('click', () => {
+    const message = inputBox.value.trim();
+    if (message) {
+      const selectedPersona = personas[0]; // Choose the persona based on your logic
+      chatHistory.push({ message, avatar: selectedPersona.avatar });
+      inputBox.value = '';
+      renderChat();
+      saveChat();
+    }
+  });
+
+  endButton.addEventListener('click', () => {
+    chatHistory.push({ message: 'Chat ended.', avatar: '' });
+    renderChat();
+    saveChat();
+  });
+
+  exportButton.addEventListener('click', () => {
+    const exportedData = JSON.stringify(chatHistory);
+    prompt('Copy this to save your chat history:', exportedData);
+  });
+
+  renderChat();
+})();
