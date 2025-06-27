@@ -1,110 +1,120 @@
-javascript:(function() {
-  const storageKey = 'aiChatHistory';
-  const personas = [
-    { name: 'Jerry', avatar: 'https://img.freepik.com/free-photo/young-bearded-man-with-striped-shirt_273609-5677.jpg?semt=ais_hybrid&w=740' },
-    { name: 'Bob', avatar: 'https://thumbs.dreamstime.com/b/portrait-man-beard-view-one-handsome-senior-stylish-black-hair-long-lush-blue-shirt-standing-outdoor-white-wall-61089769.jpg?w=768' }
-  ];
+window.initAIChat = function() {
+  // Load or initialize session data
+  const sessKey = 'aiChatSession';
+  let sess = JSON.parse(localStorage.getItem(sessKey) || '{}');
+  if (!sess.userPersona) sess.userPersona = 'You';
+  if (!sess.aiPersona) sess.aiPersona = 'Helpful Assistant';
+  if (!Array.isArray(sess.history)) sess.history = [];
 
-  let chatHistory = JSON.parse(localStorage.getItem(storageKey)) || [];
+  // Create container
+  const C = document.createElement('div');
+  Object.assign(C.style, {
+    position: 'fixed', bottom: '10px', right: '10px',
+    width: '350px', background: '#fff', border: '1px solid #888',
+    borderRadius: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+    fontFamily: 'sans-serif', zIndex: 999999, padding: '8px'
+  });
 
-  const container = document.createElement('div');
-  container.style.position = 'fixed';
-  container.style.bottom = '10px';
-  container.style.right = '10px';
-  container.style.width = '300px';
-  container.style.height = '400px';
-  container.style.backgroundColor = '#fff';
-  container.style.border = '1px solid #ccc';
-  container.style.boxShadow = '0 0 10px rgba(0,0,0,0.1)';
-  container.style.zIndex = '10000';
-  container.style.padding = '10px';
-  container.style.overflow = 'hidden';
+  // Header + close
+  C.innerHTML = `
+    <div style="display:flex;justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <strong>AI Chat</strong><button id="aiClose" style="border:none;background:none;font-size:16px;cursor:pointer;">×</button>
+    </div>
+    <div style="margin-bottom:6px;">
+      <input id="userPersona" placeholder="Your persona" style="width:48%;margin-right:4%;"/>
+      <input id="aiPersona" placeholder="AI persona" style="width:48%;"/>
+    </div>
+    <div id="aiLog" style="height:220px;overflow:auto;padding:4px;border:1px solid #ddd;background:#fafafa;margin-bottom:6px;"></div>
+    <textarea id="aiInput" rows="2" style="width:100%;box-sizing:border-box;" placeholder="Type your message…"></textarea>
+    <button id="aiSend" style="width:100%;margin-top:4px;">Send</button>
+  `;
+  document.body.appendChild(C);
 
-  const chatBox = document.createElement('div');
-  chatBox.style.height = '300px';
-  chatBox.style.overflowY = 'auto';
-  chatBox.style.marginBottom = '10px';
-  container.appendChild(chatBox);
+  // Elements
+  const closeBtn = C.querySelector('#aiClose');
+  const userInput = C.querySelector('#aiInput');
+  const userPersonaInput = C.querySelector('#userPersona');
+  const aiPersonaInput = C.querySelector('#aiPersona');
+  const logDiv = C.querySelector('#aiLog');
+  const sendBtn = C.querySelector('#aiSend');
 
-  const inputBox = document.createElement('input');
-  inputBox.type = 'text';
-  inputBox.placeholder = 'Type your message...';
-  inputBox.style.width = '100%';
-  inputBox.style.padding = '5px';
-  container.appendChild(inputBox);
+  // Populate persona inputs
+  userPersonaInput.value = sess.userPersona;
+  aiPersonaInput.value = sess.aiPersona;
 
-  const sendButton = document.createElement('button');
-  sendButton.textContent = 'Send';
-  sendButton.style.width = '100%';
-  sendButton.style.padding = '5px';
-  container.appendChild(sendButton);
+  // Close handler
+  closeBtn.onclick = () => C.remove();
 
-  const endButton = document.createElement('button');
-  endButton.textContent = 'End Chat';
-  endButton.style.width = '100%';
-  endButton.style.padding = '5px';
-  container.appendChild(endButton);
+  // Save persona changes
+  userPersonaInput.onchange = () => {
+    sess.userPersona = userPersonaInput.value.trim() || 'You';
+    saveSession();
+  };
+  aiPersonaInput.onchange = () => {
+    sess.aiPersona = aiPersonaInput.value.trim() || 'Helpful Assistant';
+    saveSession();
+  };
 
-  const exportButton = document.createElement('button');
-  exportButton.textContent = 'Export Chat';
-  exportButton.style.width = '100%';
-  exportButton.style.padding = '5px';
-  container.appendChild(exportButton);
-
-  document.body.appendChild(container);
-
-  function renderChat() {
-    chatBox.innerHTML = '';
-    chatHistory.forEach(entry => {
-      const messageDiv = document.createElement('div');
-      messageDiv.style.display = 'flex';
-      messageDiv.style.marginBottom = '5px';
-
-      const avatar = document.createElement('img');
-      avatar.src = entry.avatar;
-      avatar.style.width = '30px';
-      avatar.style.height = '30px';
-      avatar.style.borderRadius = '50%';
-      avatar.style.marginRight = '10px';
-
-      const messageText = document.createElement('div');
-      messageText.textContent = entry.message;
-      messageText.style.backgroundColor = '#f1f1f1';
-      messageText.style.padding = '5px';
-      messageText.style.borderRadius = '5px';
-
-      messageDiv.appendChild(avatar);
-      messageDiv.appendChild(messageText);
-      chatBox.appendChild(messageDiv);
+  // Render chat history
+  function renderLog() {
+    logDiv.innerHTML = '';
+    sess.history.forEach(({sender, text}) => {
+      const line = document.createElement('div');
+      line.innerHTML = `<strong>${sender}:</strong> ${text}`;
+      logDiv.appendChild(line);
     });
-    chatBox.scrollTop = chatBox.scrollHeight;
+    logDiv.scrollTop = logDiv.scrollHeight;
   }
 
-  function saveChat() {
-    localStorage.setItem(storageKey, JSON.stringify(chatHistory));
+  // Save to localStorage
+  function saveSession() {
+    localStorage.setItem(sessKey, JSON.stringify(sess));
   }
 
-  sendButton.addEventListener('click', () => {
-    const message = inputBox.value.trim();
-    if (message) {
-      const selectedPersona = personas[0]; // Choose the persona based on your logic
-      chatHistory.push({ message, avatar: selectedPersona.avatar });
-      inputBox.value = '';
-      renderChat();
-      saveChat();
+  // Send message handler
+  sendBtn.onclick = async () => {
+    const text = userInput.value.trim();
+    if (!text) return;
+    userInput.value = '';
+
+    // Add user message
+    sess.history.push({ sender: sess.userPersona, text });
+    renderLog();
+    saveSession();
+
+    // Call your AI endpoint (example: Pollinations text API)
+    try {
+      const res = await fetch('https://text.pollinations.ai/' + encodeURIComponent(text) +
+                              '?system=' + encodeURIComponent(sess.aiPersona));
+      const aiText = await res.text();
+
+      // Add AI message
+      sess.history.push({ sender: sess.aiPersona, text: aiText });
+      renderLog();
+      saveSession();
+    } catch (err) {
+      sess.history.push({ sender: 'Error', text: err.message });
+      renderLog();
+      saveSession();
     }
-  });
+  };
 
-  endButton.addEventListener('click', () => {
-    chatHistory.push({ message: 'Chat ended.', avatar: '' });
-    renderChat();
-    saveChat();
-  });
+  // Draggable
+  const hdr = C.firstElementChild;
+  hdr.onmousedown = e => {
+    e.preventDefault();
+    const startX = e.clientX - C.offsetLeft;
+    const startY = e.clientY - C.offsetTop;
+    function onmove(ev) {
+      C.style.left = (ev.clientX - startX) + 'px';
+      C.style.top = (ev.clientY - startY) + 'px';
+      C.style.bottom = 'auto';
+      C.style.right = 'auto';
+    }
+    document.addEventListener('mousemove', onmove);
+    document.addEventListener('mouseup', () => document.removeEventListener('mousemove', onmove), { once: true });
+  };
 
-  exportButton.addEventListener('click', () => {
-    const exportedData = JSON.stringify(chatHistory);
-    prompt('Copy this to save your chat history:', exportedData);
-  });
-
-  renderChat();
-})();
+  // Initial render
+  renderLog();
+};
